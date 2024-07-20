@@ -1,3 +1,4 @@
+out/
 out/build/GCC 13.2.0 x86_64-w64-mingw32 (ucrt64)/cmake_install.cmake
 out/build/GCC 13.2.0 x86_64-w64-mingw32 (ucrt64)/CMakeCache.txt
 out/build/GCC 13.2.0 x86_64-w64-mingw32 (ucrt64)/CPackConfig.cmake
