@@ -26,17 +26,23 @@ class Ball: public sf::CircleShape{
         //amount to change velocity on collisions
         float damping_factor=1;
 
-        Ball(string col, sf::Vector2f vel){
+        Ball(string col, sf::Vector2f vel,sf::Vector2i pos){
             velocity=vel;
             color=col;
+            this->setPosition(pos.x,pos.y);
             this->setFillColor(colors[col]);
 
         };
         Ball(){
-            velocity={2,2};
+            generateRandomVelocity();
             color="White";
+            this->setPosition(0,0);
             this->setFillColor(colors["White"]);
         };
+        void setColor(string col){
+            color = col;
+            this->setFillColor(colors[col]);
+        }
         string getColor(){
             return color;
         }
@@ -48,6 +54,15 @@ class Ball: public sf::CircleShape{
         void setVelocity(sf::Vector2f vel){
             velocity=vel;
         }
+        void generateRandomVelocity(int min =1,int max = 8){
+            float xvel=rand()%(2*max/2 -min)+min;
+            float yvel=rand()%(2*max/2-min) +min;
+            velocity = {xvel,yvel};
+        }
+        void generateRandomPosition(sf::Vector2i w ,int radius){
+            int xpos=rand()%(w.x - 2*radius);
+            int ypos=rand()%(w.y - 2*radius);
+            this->setPosition(xpos,ypos);}
 
         /* 
         Moves the ball and updates for any collisions
@@ -58,7 +73,6 @@ class Ball: public sf::CircleShape{
 
             int rad = this->getRadius();
             const sf::Vector2 pos = this->getPosition();
-            // cout << pos.x <<","<< pos.y << " : ";
 
             //collision
             if(pos.x+2*rad > w.x || pos.x<0){
@@ -81,6 +95,14 @@ class Ball: public sf::CircleShape{
             } 
         }
 
+        friend ostream& operator<<(ostream& os, Ball& ball){
+            os<<"Position: " <<ball.getPosition().x<<","<<ball.getPosition().y<<"\n";
+            os<<"Velocity: " <<ball.getVelocity().x<<","<<ball.getVelocity().y<<"\n";
+            os<<"Radius: " <<ball.getRadius() << "\n";
+            os<<"Color: " <<ball.getColor()<<"\n\n";
+            return os;
+        }
+
 };
 /* Adds color scheme to sf::RectangleShape */
 class Tile: public sf::RectangleShape{
@@ -89,9 +111,9 @@ class Tile: public sf::RectangleShape{
         map < string,sf::Color > off_colors {
             {"Black",sf::Color(50,50,50)},
             {"White",sf::Color(200,200,200)},
-            {"Red",sf::Color(255,50,50)},
-            {"Green",sf::Color(50,255,50)},
-            {"Blue",sf::Color(50,50,255)},
+            {"Red",sf::Color(255,100,100)},
+            {"Green",sf::Color(100,255,100)},
+            {"Blue",sf::Color(100,100,255)},
         };
     public:
         void setColor(string col){
@@ -106,15 +128,19 @@ class Tile: public sf::RectangleShape{
         void ballCollision(Ball& ball){
             const sf::Vector2 b_pos=ball.getPosition();
             const sf::Vector2 t_pos=this->getPosition();
+            const int rad = ball.getRadius();
 
             sf::Vector2f size= this->getSize();
 
             sf::Vector2f velocity= ball.getVelocity();
 
+            float dx = velocity.x;
+            float dy = velocity.y;
+
             float ball_left_edge = b_pos.x;
-            float ball_right_edge = b_pos.x+2*ball.getRadius();
+            float ball_right_edge = b_pos.x+2*rad;
             float ball_bottom_edge = b_pos.y;
-            float ball_top_edge = b_pos.y+2*ball.getRadius();
+            float ball_top_edge = b_pos.y+2*rad;
 
             float tile_left_edge = t_pos.x;
             float tile_right_edge = t_pos.x+size.x;
@@ -123,26 +149,34 @@ class Tile: public sf::RectangleShape{
 
             if(color != ball.getColor()){
                 if (ball_bottom_edge<tile_top_edge && ball_top_edge>tile_bottom_edge){
-                    if(ball_right_edge > tile_left_edge && ball_left_edge<tile_left_edge && velocity.x>0){
+                    if(ball_right_edge > tile_left_edge && ball_right_edge-tile_left_edge<=dx){
+                        //bounce
                         velocity.x*=-ball.damping_factor;
+                        //update color of tile
                         this->setColor(ball.getColor());
                     }
-                    if (ball_left_edge < tile_right_edge && ball_right_edge>tile_right_edge && velocity.x<0){
+                    else if (ball_left_edge < tile_right_edge && ball_left_edge-tile_right_edge>=dx){
                         velocity.x*=-ball.damping_factor;
                         this->setColor(ball.getColor());
                     }
 
                 }
                 if (ball_right_edge>tile_left_edge && ball_left_edge<tile_right_edge){
-                    if(ball_top_edge > tile_bottom_edge && ball_bottom_edge<tile_bottom_edge && velocity.y>0){
+                    if(ball_top_edge > tile_bottom_edge && ball_top_edge-tile_bottom_edge<=dy){
                         velocity.y*=-ball.damping_factor;
+
                         this->setColor(ball.getColor());
                     }
-                    if (ball_bottom_edge < tile_top_edge && ball_top_edge>tile_top_edge && velocity.y<0){
+                    else if (ball_bottom_edge < tile_top_edge && ball_bottom_edge-tile_top_edge>=dy){
                         velocity.y*=-ball.damping_factor;
+
                         this->setColor(ball.getColor());
                     }
 
+                }
+                //check if the tile was changed with a ball still in it
+                if(ball_bottom_edge>tile_bottom_edge && ball_top_edge<tile_top_edge && ball_left_edge>tile_left_edge && ball_right_edge<tile_right_edge){
+                    this->setColor(ball.getColor());
                 }
 
             }
@@ -150,15 +184,21 @@ class Tile: public sf::RectangleShape{
         }
 };
 
-sf::Vector2f generateRandomVelocity(int min =1,int max = 8){
-    float xvel=rand()%(2*max/2 -min)+min;
-    float yvel=rand()%(2*max/2-min) +min;
-    return {xvel,yvel};
-}
-sf::Vector2i generateRandomPosition(sf::Vector2i w ,int radius){
-    int xpos=rand()%(w.x - 2*radius);
-    int ypos=rand()%(w.y - 2*radius);
-    return {xpos,ypos};
+void generateBalls(vector<Ball> &balls, map<string,int> colors, sf::Vector2i w, int rad = 20 ){
+    for (auto color:colors){
+        string col_string = color.first;
+        int num = color.second;
+        for (int i=0;i<num;i++){
+            Ball ball;
+            
+            ball.generateRandomVelocity(1,8);
+            ball.setColor(col_string);
+            ball.generateRandomPosition(w,rad);
+            ball.setRadius(rad);
+            balls.push_back(ball);
+        }
+    }
+    
 }
 
 
@@ -166,8 +206,7 @@ int main()
 {
     //Params
     const sf::Vector2i w={1920,1080}; //window size
-    // sf::Vector2f vel= {2,-1};
-    float rad = 20;
+    float rad = 30;
     int grid_size=120;
     int fps = 144;
     srand(time(NULL));
@@ -179,30 +218,17 @@ int main()
     // Ball shape;
     sf::Vector2i pos;
 
-    Ball wb("White",generateRandomVelocity());
-    pos=generateRandomPosition(w,rad);
-    // wb.setPosition(10,w.y-2*rad);
-    wb.setPosition(pos.x,pos.y);
-    wb.setRadius(rad);
+    vector<Ball> balls;
+    map<string,int> colors={
+        {"White",1},
+        {"Black",20},
+        {"Red",4},
+        {"Green",2},
+        {"Blue",1}
+    };
 
-    Ball bb("Black",generateRandomVelocity());
-    pos=generateRandomPosition(w,rad);
-    // bb.setPosition(w.x-2*rad,10);
-    bb.setPosition(pos.x,pos.y);
-    bb.setRadius(rad);
+    generateBalls(balls,colors,w,rad);
 
-    Ball rb("Red",generateRandomVelocity());
-    pos=generateRandomPosition(w,rad);
-    // rb.setPosition(w.x-2*rad,w.y-2*rad);
-    rb.setPosition(pos.x,pos.y);
-    rb.setRadius(rad);
-
-    Ball ub("Blue",generateRandomVelocity());
-    pos=generateRandomPosition(w,rad);
-    // ub.setPosition(10,10);
-    ub.setPosition(pos.x,pos.y);
-    ub.setRadius(rad);
-   
     sf::Vector2i tdim = {w.x/grid_size,w.y/grid_size}; //4,3
     Tile grid[tdim.x][tdim.y];
     //initialize the tile grid
@@ -215,9 +241,6 @@ int main()
         }
     }
 
-
-
-
     while (window.isOpen())
     {   
         for (auto event = sf::Event{}; window.pollEvent(event);)
@@ -227,30 +250,25 @@ int main()
                 window.close();
             }
         }
-
-        // window.clear(sf::Color::Black);
         
+        // window.clear(sf::Color::Black);
         for (int r=0;r<tdim.x;r++){
             for (int c=0;c<tdim.y;c++){
-                grid[r][c].ballCollision(wb);
-                grid[r][c].ballCollision(bb);
-                grid[r][c].ballCollision(rb);
-                grid[r][c].ballCollision(ub);
+                for (auto& ball:balls){
+                    grid[r][c].ballCollision(ball);
+                }
                 window.draw(grid[r][c]);
             }
         }
 
-        wb.update(w);
-        window.draw(wb);
-        bb.update(w);
-        window.draw(bb);
-        rb.update(w);
-        window.draw(rb);
-        ub.update(w);
-        window.draw(ub);
-        
+        for (auto& ball:balls){
 
-        //
+            ball.update(w);
+            // cout<<ball;
+            window.draw(ball);
+
+        }
+
         window.display();
     }
 }
